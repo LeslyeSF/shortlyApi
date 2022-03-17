@@ -35,3 +35,34 @@ export async function getUser(req, res) {
     return res.sendStatus(500);
   }
 }
+
+export async function findUser(req, res){
+  const { id } = req.params;
+  try {
+    const { rows: user } = await connection.query(
+      `SELECT (id, name), COUNT(s."visitCount") AS "visitCount" 
+      FROM users JOIN "shortUrls" s ON id=s."userId"
+      WHERE id=$1
+      GROUP BY users.id`, [id]);
+    
+    const { rows: shortenedUrls } = await connection.query(
+      `SELECT (id, "shortUrl", url, "visitCount") FROM "shortUrls"
+      WHERE "userId"=$1`, [id]
+    );
+    res.status(200).send({...user, shortenedUrls});
+  } catch (err) {
+    res.status(500).send(err);
+  }
+}
+
+export async function ranking(req, res){
+  try{
+    const { rows: user } = await connection.query(
+      `SELECT (id, name), COUNT(s.id) AS "linksCount", COUNT(s."visitCount") AS "visitCount" 
+      FROM users JOIN "shortUrls" s ON users.id=s."userId"
+      GROUP BY users.id ORDER BY "visitCount" DESC LIMIT 10`);
+    res.status(200).send(user);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+}
